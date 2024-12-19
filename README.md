@@ -4,7 +4,7 @@ Example of Azure Stack based on [cdk.tf](https://cdk.tf)
 
 Cloud Development Kit for Terraform (CDKTF) allows you to use familiar programming languages to define and provision infrastructure. This gives you access to the entire Terraform ecosystem without learning HashiCorp Configuration Language (HCL) and lets you leverage the power of your existing toolchain for testing, dependency management, etc.
 
-Current soltuion use pure Python implementation, so you don't need to utilise HCL Terraform approach to deploy infrastructure for Azure, CDKTF trasform Python into terraform-compatible configuration that will execute perfectly without any extra efforts
+Current solution use pure Python implementation, so you don't need to utilise HCL Terraform approach to deploy infrastructure for Azure, CDKTF trasform Python into terraform-compatible configuration that will execute perfectly without any extra efforts
 
 
 ### Requirements:
