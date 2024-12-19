@@ -37,13 +37,15 @@ TBD
 
 ### TODO
 
-* Create Docker image with basic stack
+* Create Docker image with basic for Quick Start
+* Update README.md documentation how to quick start
+* Update README.md documentation how to run CDKTF locally
 * Python Tests for CDKTF Azure stack
 
 ### Acknowledgments
 * Much appreciated to [SET University](https://www.setuniversity.edu.ua/en/) in scope of which this library was 
 developed as part of final project for Python course as part of Master's deegree program for [ML & Cloud Computing](https://www.setuniversity.edu.ua/en/education/computer-science-machine-learning-cloud-computing/)
-* Big kudos to tutor and mentor [Denys Kotov](https://github.com/dmytrohridin)
+* Big kudos to tutor and mentor [Dmytro Hridin](https://github.com/dmytrohridin)
 
 ### License
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
