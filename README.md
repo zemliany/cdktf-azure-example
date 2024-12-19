@@ -1,8 +1,6 @@
-# cdktf-azure-example
-Azure Stack based on cdk.tf
+### Azure Stack Provision Example via Cloud Development Kit for Terraform (CDKTF)
 
-
-# Azure Stack Provision Example via Cloud Development Kit for Terraform (CDKTF)
+Example of Azure Stack based on [cdk.tf](https://cdk.tf)
 
 Cloud Development Kit for Terraform (CDKTF) allows you to use familiar programming languages to define and provision infrastructure. This gives you access to the entire Terraform ecosystem without learning HashiCorp Configuration Language (HCL) and lets you leverage the power of your existing toolchain for testing, dependency management, etc.
 
