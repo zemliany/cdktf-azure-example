@@ -22,17 +22,26 @@ RUN npm install -g cdktf-cli@$CDKTF_VERSION \
 
 RUN python3 -m venv $VIRTUAL_ENV \
     && $VIRTUAL_ENV/bin/pip install --upgrade pip \
-    && $VIRTUAL_ENV/bin/pip install psutil requests azure-cli \
+    && $VIRTUAL_ENV/bin/pip install psutil requests \
     && rm -rf ~/.cache/pip
+
+FROM mcr.microsoft.com/azure-cli:latest AS azure-cli
+
+RUN az --help
 
 FROM node:22.12.0-alpine3.21
 
 ENV PYTHONUNBUFFERED=1 \
     PATH="/opt/venv/bin:/usr/local/bin:$PATH"
 
+# Copy CDKTF dependencies from builder
 COPY --from=builder /usr/local/bin/terraform /usr/local/bin/terraform
 COPY --from=builder /usr/local/lib/node_modules /usr/local/lib/node_modules
 COPY --from=builder /opt/venv /opt/venv
+
+# Copy Azure CLI binary and dependencies from azure-cli
+COPY --from=azure-cli /bin/az /opt/venv/bin/az
+COPY --from=azure-cli /usr/lib/az/lib/python3.12/site-packages /opt/venv/lib/python3.12/site-packages
 
 RUN apk add --no-cache \
     python3 py3-pip curl git jq bash \
