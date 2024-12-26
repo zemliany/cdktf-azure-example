@@ -61,10 +61,10 @@ class AzureIntroToCloud(TerraformStack):
             self,
             "azurerm",
             features={},
-            subscription_id="<change_me>", # ARM_SUBSCRIPTION_ID
-            client_id="<change_me>", # ARM_CLIENT_ID
-            client_secret="<change_me>", # ARM_CLIENT_SECRET
-            tenant_id="<change_me>" # ARM_TENANT_ID
+            subscription_id=os.environ["ARM_SUBSCRIPTION_ID"], # ARM_SUBSCRIPTION_ID
+            client_id=os.environ["ARM_CLIENT_ID"], # ARM_CLIENT_ID
+            client_secret=os.environ["ARM_CLIENT_SECRET"], # ARM_CLIENT_SECRET
+            tenant_id=os.environ["ARM_TENANT_ID"] # ARM_TENANT_ID
         )
 
         RandomProvider(self, "random")
@@ -351,7 +351,6 @@ class AzureIntroToCloud(TerraformStack):
             loadbalancer_id=lb.id,
             name="test-probe",
             port=80,
-            resource_group_name=resource_group.name
         )
 
         nic_lb_pool_associations = [
@@ -370,7 +369,6 @@ class AzureIntroToCloud(TerraformStack):
             "my_lb_rule",
             loadbalancer_id=lb.id,
             name="test-rule",
-            resource_group_name=resource_group.name,
             protocol="Tcp",
             frontend_port=80,
             backend_port=80,
