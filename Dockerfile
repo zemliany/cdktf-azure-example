@@ -31,8 +31,10 @@ RUN groupadd --gid 1001 cdktf \
     && useradd --uid 1001 --gid cdktf --create-home cdktf
 
 WORKDIR /app
-RUN chown -R cdktf:cdktf /app
+COPY entrypoint.sh /app
+RUN chown -R cdktf:cdktf /app \
+    && chmod +x /app/entrypoint.sh
 
 USER cdktf
 
-CMD [ "bash" ]
+CMD [ "/app/entrypoint.sh" ]
