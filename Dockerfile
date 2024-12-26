@@ -1,15 +1,14 @@
-FROM node:22.12.0-alpine3.21 AS builder
+FROM mcr.microsoft.com/azure-cli@sha256:6d7791e595999664478813ee6da9b340dc087be87cce9f581ded83cc4bf15ca0 AS azure-cli
 
-ENV PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    VIRTUAL_ENV=/opt/venv \
-    TERRAFORM_VERSION=1.6.0 \
-    CDKTF_VERSION=latest
+FROM python:3.12-slim-bookworm
 
-RUN apk add --no-cache \
-    python3 python3-dev py3-pip \
-    gcc musl-dev linux-headers libffi-dev openssl-dev build-base \
-    git curl jq unzip bash
+ENV TERRAFORM_VERSION=1.7.5 \
+    CDKTF_VERSION=0.20.10
+
+RUN apt-get clean && apt-get update && apt-get -qy upgrade \
+    && apt-get -qy install vim jq curl unzip git \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN curl -fsSL "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip" -o terraform.zip \
     && unzip terraform.zip \
@@ -17,36 +16,23 @@ RUN curl -fsSL "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/te
     && chmod +x /usr/local/bin/terraform \
     && rm -f terraform.zip
 
-RUN npm install -g cdktf-cli@$CDKTF_VERSION \
-    && npm cache clean --force
-
-RUN python3 -m venv $VIRTUAL_ENV \
-    && $VIRTUAL_ENV/bin/pip install --upgrade pip \
-    && $VIRTUAL_ENV/bin/pip install psutil requests \
-    && rm -rf ~/.cache/pip
-
-FROM mcr.microsoft.com/azure-cli:latest AS azure-cli
-
-RUN az --help
-
-FROM node:22.12.0-alpine3.21
-
-ENV PYTHONUNBUFFERED=1 \
-    PATH="/opt/venv/bin:/usr/local/bin:$PATH"
-
-# Copy CDKTF dependencies from builder
-COPY --from=builder /usr/local/bin/terraform /usr/local/bin/terraform
-COPY --from=builder /usr/local/lib/node_modules /usr/local/lib/node_modules
-COPY --from=builder /opt/venv /opt/venv
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs \
+    && npm install --global cdktf-cli@${CDKTF_VERSION} \
+    && npm install --global yarn \
+    && npm cache clean --force \
+    && pip3 install pipenv
 
 # Copy Azure CLI binary and dependencies from azure-cli
-COPY --from=azure-cli /bin/az /opt/venv/bin/az
-COPY --from=azure-cli /usr/lib/az/lib/python3.12/site-packages /opt/venv/lib/python3.12/site-packages
+COPY --from=azure-cli /bin/az /usr/local/bin/az
+COPY --from=azure-cli /usr/lib/az/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 
-RUN apk add --no-cache \
-    python3 py3-pip curl git jq bash \
-    && ln -s ../lib/node_modules/cdktf-cli/bundle/bin/cdktf /usr/local/bin/cdktf
+RUN groupadd --gid 1001 cdktf \
+    && useradd --uid 1001 --gid cdktf --create-home cdktf
 
 WORKDIR /app
+RUN chown -R cdktf:cdktf /app
 
-CMD ["bash"]
+USER cdktf
+
+CMD [ "bash" ]
