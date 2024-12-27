@@ -412,7 +412,7 @@ class AzureIntroToCloud(TerraformStack):
             loadbalancer_id=lb.id,
             name="test-probe",
             port=80,
-            resource_group_name=resource_group.name,
+            # resource_group_name=resource_group.name,
         )
 
         nic_lb_pool_associations = [
@@ -438,7 +438,7 @@ class AzureIntroToCloud(TerraformStack):
             frontend_ip_configuration_name="frontend-ip",
             probe_id=lb_probe.id,
             backend_address_pool_ids=[lb_pool.id],
-            resource_group_name=resource_group.name,
+            # resource_group_name=resource_group.name,
         )
 
         TerraformOutput(
