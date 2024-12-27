@@ -4,6 +4,8 @@
 from imports.azurerm.provider import AzurermProvider
 from imports.azurerm.provider import AzurermProviderFeatures
 from imports.azurerm.resource_group import ResourceGroup
+from imports.azurerm.storage_account import StorageAccount
+from imports.azurerm.storage_container import StorageContainer
 from imports.azurerm.virtual_network import VirtualNetwork
 from imports.azurerm.subnet import Subnet
 from imports.azurerm.network_security_group import NetworkSecurityGroup
@@ -29,6 +31,8 @@ __all__ = [
     "AzurermProvider",
     "AzurermProviderFeatures",
     "ResourceGroup",
+    "StorageAccount",
+    "StorageContainer",
     "VirtualNetwork",
     "Subnet",
     "NetworkSecurityGroup",

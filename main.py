@@ -1,5 +1,5 @@
 import os
-from cdktf import App, TerraformStack, TerraformVariable, TerraformOutput, Token, Fn
+from cdktf import App, TerraformStack, TerraformVariable, TerraformOutput, Token, Fn, AzurermBackend
 from constructs import Construct
 from imports.random.provider import RandomProvider
 from imports.random.password import Password
@@ -7,6 +7,8 @@ from imports.random.password import Password
 from utils.azure_resources import (
     AzurermProvider,
     ResourceGroup,
+    StorageAccount,
+    StorageContainer,
     VirtualNetwork,
     Subnet,
     NetworkSecurityGroup,
@@ -40,6 +42,7 @@ class EmailExceptionVerification(ValueError):
     def __init__(self, message):
         super().__init__(message)
 
+
 try:
     email = os.environ['EMAIL']
 except KeyError as ex:
@@ -52,20 +55,78 @@ if email.split('@')[1] != 'setuniversity.edu.ua':
 user = str(email.split("@")[0].replace('.',''))
 
 
+class AzureIntroToCloudBackendStack(TerraformStack):
+    def __init__(self, scope: Construct, id: str):
+        super().__init__(scope, id)
+
+        # Initialize Azure Provider
+        AzurermProvider(
+            self,
+            "azurerm",
+            features={},
+            subscription_id=os.environ['ARM_SUBSCRIPTION_ID'], # ARM_SUBSCRIPTION_ID
+            client_id=os.environ['ARM_CLIENT_ID'], # ARM_CLIENT_ID
+            client_secret=os.environ['ARM_CLIENT_SECRET'], # ARM_CLIENT_SECRET
+            tenant_id=os.environ['ARM_TENANT_ID'] # ARM_TENANT_ID
+        )
+
+        # Create a Resource Group
+        resource_group = ResourceGroup(
+            self,
+            "backend_rg",
+            name=f"{user}-azure-cdktf-backend-rg",
+            location="eastus"
+        )
+
+        # Create a Storage Account
+        storage_account = StorageAccount(
+            self,
+            "backend_storage_account",
+            name="cdktfstatebackend",
+            resource_group_name=resource_group.name,
+            location=resource_group.location,
+            account_tier="Standard",
+            account_replication_type="LRS"
+        )
+
+        # Create a Blob Container
+        storage_container = StorageContainer(
+            self,
+            "backend_storage_container",
+            name="tfstate",
+            storage_account_name=storage_account.name,
+            container_access_type="private"
+        )
+
+        # Output the backend details
+        TerraformOutput(self, "backend_resource_group_name", value=resource_group.name)
+        TerraformOutput(self, "backend_storage_account_name", value=storage_account.name)
+        TerraformOutput(self, "backend_container_name", value=storage_container.name)
+
+
 class AzureIntroToCloud(TerraformStack):
     def __init__(self, scope: Construct, id: str):
         super().__init__(scope, id)
+
 
         """Init Azure and Random Provider in CDKTF"""
         AzurermProvider(
             self,
             "azurerm",
             features={},
-            subscription_id=os.environ["ARM_SUBSCRIPTION_ID"], # ARM_SUBSCRIPTION_ID
-            client_id=os.environ["ARM_CLIENT_ID"], # ARM_CLIENT_ID
-            client_secret=os.environ["ARM_CLIENT_SECRET"], # ARM_CLIENT_SECRET
-            tenant_id=os.environ["ARM_TENANT_ID"] # ARM_TENANT_ID
+            subscription_id=os.environ['ARM_SUBSCRIPTION_ID'], # ARM_SUBSCRIPTION_ID
+            client_id=os.environ['ARM_CLIENT_ID'], # ARM_CLIENT_ID
+            client_secret=os.environ['ARM_CLIENT_SECRET'], # ARM_CLIENT_SECRET
+            tenant_id=os.environ['ARM_TENANT_ID'] # ARM_TENANT_ID
         )
+
+        # Use remote state outputs for backend configuration
+        AzurermBackend(self,
+                       resource_group_name=f"{user}-azure-cdktf-backend-rg",
+                       storage_account_name="cdktfstatebackend",
+                       container_name="tfstate",
+                       key="terraform.tfstate"
+                       )
 
         RandomProvider(self, "random")
 
@@ -351,6 +412,7 @@ class AzureIntroToCloud(TerraformStack):
             loadbalancer_id=lb.id,
             name="test-probe",
             port=80,
+            resource_group_name=resource_group.name,
         )
 
         nic_lb_pool_associations = [
@@ -376,6 +438,7 @@ class AzureIntroToCloud(TerraformStack):
             frontend_ip_configuration_name="frontend-ip",
             probe_id=lb_probe.id,
             backend_address_pool_ids=[lb_pool.id],
+            resource_group_name=resource_group.name,
         )
 
         TerraformOutput(
@@ -399,5 +462,6 @@ class AzureIntroToCloud(TerraformStack):
         )
 
 app = App()
+AzureIntroToCloudBackendStack(app, f"{user}-azure-backend-stack")
 AzureIntroToCloud(app, f"{user}-azure-stack")
 app.synth()

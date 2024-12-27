@@ -37,4 +37,4 @@ RUN chown -R cdktf:cdktf /app \
 
 USER cdktf
 
-ENTRYPOINT [ "/app/entrypoint.sh" ]
+CMD [ "/app/entrypoint.sh" ]

@@ -6,6 +6,10 @@ function check_azure_creds() {
     _USER=$(echo ${_EMAIL} | awk -F "@" '{print $1}' | sed 's/\.//g')
     _DOMAIN=$(echo ${_EMAIL} | awk -F "@" '{print $2}')
     _NAME_FOR_RBAC="${_USER}-cdktf-automation-${_RAND_PREFIX}"
+    _CDKTF_APP_STACK="${_USER}-azure-stack"
+    _CDKTF_BACKEND_STACK="${_USER}-azure-backend-stack"
+    _CDKTF_BACKEND_RG="${_USER}-azure-cdktf-backend-rg"
+
 
     if [ "${_DOMAIN}" != "setuniversity.edu.ua" ]; then
         echo "${_DOMAIN} not equal to setuniversity.edu.ua. Only setuniversity.edu.ua email's is supported"
@@ -36,6 +40,9 @@ function check_azure_creds() {
     fi
 
     export EMAIL=${_EMAIL}
+    export CDKTF_APP_STACK=${_CDKTF_APP_STACK}
+    export CDKTF_BACKEND_STACK=${_CDKTF_BACKEND_STACK}
+    export CDKTF_BACKEND_RG=${_CDKTF_BACKEND_RG}
 }
 
 function cdktf_azure_example_checkout() {
@@ -82,14 +89,29 @@ function azure_rbac_cleanup() {
     fi
 }
 
+function cdktf_execute() {
+    _STACK_PATH=/app/cdktf-azure-example/cdktf.out/stacks/${CDKTF_APP_STACK}/
+    if [ "$(az group exists --name ${CDKTF_BACKEND_RG})" == "false" ]; then
+        cdktf "$1" ${CDKTF_BACKEND_STACK} --auto-approve
+        cdktf "$1" ${CDKTF_APP_STACK} --migrate-state --auto-approve
+        # if [[ -d "${_STACK_PATH}" && "$(ls -A "${_STACK_PATH}")" ]]; then
+        #     cd ${_STACK_PATH}
+        #     terraform init -reconfigure
+        #     terraform init -migrate-state
+        # fi
+    fi
+    # cdktf "$1" ${CDKTF_APP_STACK} --auto-approve
+}
+
 case "$1" in
     apply|destroy|plan)
         check_azure_creds "$@"
         cdktf_azure_example_checkout
         cdktf_imports_init
-        cdktf "$1" --auto-approve
+        # cdktf "$1" --auto-approve
+        cdktf_execute $1
         azure_rbac_cleanup
-        azure_cli_cleanup
+        # azure_cli_cleanup
         ;;
     -*)
         cdktf "$@"
