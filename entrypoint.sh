@@ -61,24 +61,28 @@ function cdktf_imports_init() {
     fi
 }
 
-function cleanup() {
-    echo "Cleanup triggered"
-    sleep 3
-    if az ad sp list --all -o jsonc | jq -e '[.[] | select(.appId == "'"${ARM_CLIENT_ID}"'")] | length > 0' > /dev/null; then
-        echo "Service Principal with ID ${ARM_CLIENT_ID} exists."
-        echo "Deleting Azure RBAC credentials with ${ARM_CLIENT_ID}..."
-        az ad sp delete --id ${ARM_CLIENT_ID}
-    else
-        echo "Service Principal with appId ${ARM_CLIENT_ID} does NOT exist OR already deleted."
-    fi
-    sleep 3
-    if [[ -d ${HOME}/.azure/ && $(ls -A "${HOME}/.azure/") ]]; then
-        echo "Cleanup Azure CLI credentials..."
-        rm -rf ${HOME}/.azure/*
+function azure_cli_cleanup() {
+    if az account show -o json > /dev/null 2>&1; then
+        if [[ -d "${HOME}/.azure/" && "$(ls -A "${HOME}/.azure/")" ]]; then
+            echo "Cleanup Azure CLI credentials..."
+            rm -rf ${HOME}/.azure/*
+        fi
     fi
 }
 
-trap 'cleanup' EXIT
+function azure_rbac_cleanup() {
+    echo "RBAC Cleanup triggered"
+    sleep 3
+    if az ad sp list --all -o jsonc | jq -e "[.[] | select(.appId == ${ARM_CLIENT_ID})] | length > 0" > /dev/null; then
+        echo "Service Principal with ID ${ARM_CLIENT_ID} exists."
+        echo "Deleting Azure RBAC credentials with ${ARM_CLIENT_ID}..."
+        az ad sp delete --id ${ARM_CLIENT_ID//\"/}
+    else
+        echo "Service Principal with appId ${ARM_CLIENT_ID} does NOT exist OR already deleted."
+    fi
+}
+
+# trap 'azure_rbac_cleanup' EXIT
 
 case "$1" in
     apply|destroy|plan)
@@ -86,7 +90,8 @@ case "$1" in
         cdktf_azure_example_checkout
         cdktf_imports_init
         cdktf "$1" --auto-approve
-        cleanup
+        azure_rbac_cleanup
+        azure_cli_cleanup
         ;;
     -*)
         cdktf "$@"
