@@ -64,10 +64,12 @@ function cdktf_imports_init() {
 function cleanup() {
     echo "Cleanup triggered"
     sleep 3
-    if az ad sp list --all -o table | grep "${ARM_CLIENT_ID}" > /dev/null 2>&1; then
+    if az ad sp list --all -o jsonc | jq -e '[.[] | select(.appId == "'"${ARM_CLIENT_ID}"'")] | length > 0' > /dev/null; then
+        echo "Service Principal with ID ${ARM_CLIENT_ID} exists."
         echo "Deleting Azure RBAC credentials with ${ARM_CLIENT_ID}..."
-        echo "Deleting Azure RBAC credentials..."
         az ad sp delete --id ${ARM_CLIENT_ID}
+    else
+        echo "Service Principal with appId ${ARM_CLIENT_ID} does NOT exist OR already deleted."
     fi
     sleep 3
     if [[ -d ${HOME}/.azure/ && $(ls -A "${HOME}/.azure/") ]]; then
