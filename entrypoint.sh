@@ -82,8 +82,6 @@ function azure_rbac_cleanup() {
     fi
 }
 
-# trap 'azure_rbac_cleanup' EXIT
-
 case "$1" in
     apply|destroy|plan)
         check_azure_creds "$@"
