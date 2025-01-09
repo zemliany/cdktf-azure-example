@@ -3,6 +3,7 @@
 function check_azure_creds() {
     _RAND_PREFIX=$(echo $(cat /proc/sys/kernel/random/uuid) | awk -F '-' '{print $1}')
     _EMAIL=$2
+    _STACK_TO_DESTROY=
     _USER=$(echo ${_EMAIL} | awk -F "@" '{print $1}' | sed 's/\.//g')
     _DOMAIN=$(echo ${_EMAIL} | awk -F "@" '{print $2}')
     _NAME_FOR_RBAC="${_USER}-cdktf-automation-${_RAND_PREFIX}"
@@ -49,12 +50,14 @@ function cdktf_azure_example_checkout() {
     if [ ! -d "app/cdktf-azure-example" ]; then
         echo "Cloning 'cdktf-azure-example'..."
         cd /app
-        git clone https://github.com/zemliany/cdktf-azure-example.git
+        git clone --branch feature/SETI2C-14 https://github.com/zemliany/cdktf-azure-example.git
     fi
     sed -i "s/client_id=.*/client_id=${ARM_CLIENT_ID},/" /app/cdktf-azure-example/main.py
     sed -i "s/client_secret=.*/client_secret=${ARM_CLIENT_SECRET},/" /app/cdktf-azure-example/main.py
     sed -i "s/tenant_id=.*/tenant_id=${ARM_TENANT_ID},/" /app/cdktf-azure-example/main.py
     sed -i "s/subscription_id=.*/subscription_id=\"${ARM_SUBSCRIPTION_ID}\",/" /app/cdktf-azure-example/main.py
+    export _APP_ID=${ARM_CLIENT_ID}
+    for ARM_VAR in $(env | grep 'ARM' | awk -F '=' '{print $1}' | xargs); do unset ${ARM_VAR}; done
 }
 
 function cdktf_imports_init() {
@@ -80,27 +83,26 @@ function azure_cli_cleanup() {
 function azure_rbac_cleanup() {
     echo "RBAC Cleanup triggered"
     sleep 3
-    if az ad sp list --all -o jsonc | jq -e "[.[] | select(.appId == ${ARM_CLIENT_ID})] | length > 0" > /dev/null; then
-        echo "Service Principal with ID ${ARM_CLIENT_ID} exists."
-        echo "Deleting Azure RBAC credentials with ${ARM_CLIENT_ID}..."
-        az ad sp delete --id ${ARM_CLIENT_ID//\"/}
+    if az ad sp list --all -o jsonc | jq -e "[.[] | select(.appId == ${_APP_ID})] | length > 0" > /dev/null; then
+        echo "Service Principal with ID ${_APP_ID} exists."
+        echo "Deleting Azure RBAC credentials with ${_APP_ID}..."
+        az ad sp delete --id ${_APP_ID//\"/}
     else
-        echo "Service Principal with appId ${ARM_CLIENT_ID} does NOT exist OR already deleted."
+        echo "Service Principal with appId ${_APP_ID} does NOT exist OR already deleted."
     fi
+    unset ${_APP_ID}
 }
 
 function cdktf_execute() {
     _STACK_PATH=/app/cdktf-azure-example/cdktf.out/stacks/${CDKTF_APP_STACK}/
+    _STACK_TO_RUN=${CDKTF_APP_STACK}
     if [ "$(az group exists --name ${CDKTF_BACKEND_RG})" == "false" ]; then
-        cdktf "$1" ${CDKTF_BACKEND_STACK} --auto-approve
-        cdktf "$1" ${CDKTF_APP_STACK} --migrate-state --auto-approve
-        # if [[ -d "${_STACK_PATH}" && "$(ls -A "${_STACK_PATH}")" ]]; then
-        #     cd ${_STACK_PATH}
-        #     terraform init -reconfigure
-        #     terraform init -migrate-state
-        # fi
+        _STACK_TO_RUN=${CDKTF_BACKEND_STACK}
+        echo "Initial Azure Backend for CDKTF is not deployed, so ${_STACK_TO_RUN} will be executed firstly. If you're using plan you need to deploy backend stack at first to move forward to deploy Azure Infrastructure"
+        echo -e "List of available stacks:\n"
+        cdktf list
     fi
-    # cdktf "$1" ${CDKTF_APP_STACK} --auto-approve
+    cdktf "$1" ${_STACK_TO_RUN} --auto-approve
 }
 
 case "$1" in
